@@ -13,23 +13,30 @@ class ForceSessionCookies
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $response = $next($request);
+
         $isProductionOrHttps = config('app.env') === 'production'
             || $request->secure()
             || str_contains($request->getHost(), 'onrender.com');
 
-        if ($isProductionOrHttps) {
-            config(['session.secure' => true]);
-            config(['session.same_site' => 'none']);
+        if ($isProductionOrHttps && isset($response->headers)) {
+            foreach ($response->headers->getCookies() as $cookie) {
+                if (in_array($cookie->getName(), ['laravel_session', 'XSRF-TOKEN']) || str_ends_with($cookie->getName(), '-session')) {
+                    $newCookie = new \Symfony\Component\HttpFoundation\Cookie(
+                        $cookie->getName(),
+                        $cookie->getValue(),
+                        $cookie->getExpiresTime(),
+                        $cookie->getPath(),
+                        $cookie->getDomain(),
+                        true, // secure
+                        $cookie->isHttpOnly(),
+                        $cookie->isRaw(),
+                        'none' // sameSite
+                    );
+                    $response->headers->setCookie($newCookie);
+                }
+            }
         }
-
-        $beforeSameSite = config('session.same_site');
-
-        $response = $next($request);
-
-        $response->headers->set('X-Debug-Middleware', 'Ran');
-        $response->headers->set('X-Debug-Is-Prod', $isProductionOrHttps ? 'yes' : 'no');
-        $response->headers->set('X-Debug-Same-Site', config('session.same_site'));
-        $response->headers->set('X-Before-Same-Site', $beforeSameSite);
 
         return $response;
     }
