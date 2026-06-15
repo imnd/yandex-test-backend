@@ -40,6 +40,7 @@ RUN composer install --no-interaction --no-dev --optimize-autoloader
 
 # Устанавливаем зависимости парсера и качаем Chromium со всеми его системными библиотеками
 RUN cd parser && \
+    rm -rf node_modules && \
     npm install && \
     npx playwright install chromium && \
     npx playwright install-deps chromium
