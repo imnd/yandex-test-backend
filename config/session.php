@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Str;
 
+$isProductionOrHttps = env('APP_ENV') === 'production'
+    || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+    || (isset($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'onrender.com'));
+
 return [
 
     /*
@@ -169,7 +173,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
+    'secure' => env('SESSION_SECURE_COOKIE', $isProductionOrHttps),
 
     /*
     |--------------------------------------------------------------------------
@@ -199,7 +203,7 @@ return [
     |
     */
 
-    'same_site' => env('SESSION_SAME_SITE', env('APP_ENV') === 'production' ? 'none' : 'lax'),
+    'same_site' => env('SESSION_SAME_SITE', $isProductionOrHttps ? 'none' : 'lax'),
 
     /*
     |--------------------------------------------------------------------------
