@@ -21,26 +21,6 @@ Route::get('/csrf-token', function () {
     ]);
 });
 
-Route::get('/debug-session', function () {
-    return response()->json([
-        'session_config' => config('session'),
-        'server' => array_intersect_key($_SERVER, array_flip([
-            'HTTP_HOST', 'HTTP_X_FORWARDED_PROTO', 'HTTPS', 'APP_ENV'
-        ])),
-        'app_env' => env('APP_ENV'),
-    ]);
-});
-
-Route::get('/debug-middleware', function () {
-    $request = request();
-    return response()->json([
-        'secure_check' => $request->secure(),
-        'host' => $request->getHost(),
-        'has_onrender' => str_contains($request->getHost(), 'onrender.com'),
-        'x_forwarded_proto' => $request->header('X-Forwarded-Proto'),
-    ]);
-});
-
 // Authentication Routes
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
