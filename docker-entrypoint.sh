@@ -11,6 +11,9 @@ php artisan view:cache
 echo "Running database migrations..."
 php artisan migrate --force
 
+echo "Seeding database..."
+php artisan db:seed --force
+
 # Start the application server
 echo "Starting Laravel API server on port ${PORT:-8000}..."
 exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
