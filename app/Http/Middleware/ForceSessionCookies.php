@@ -22,11 +22,14 @@ class ForceSessionCookies
             config(['session.same_site' => 'none']);
         }
 
+        $beforeSameSite = config('session.same_site');
+
         $response = $next($request);
 
         $response->headers->set('X-Debug-Middleware', 'Ran');
         $response->headers->set('X-Debug-Is-Prod', $isProductionOrHttps ? 'yes' : 'no');
         $response->headers->set('X-Debug-Same-Site', config('session.same_site'));
+        $response->headers->set('X-Before-Same-Site', $beforeSameSite);
 
         return $response;
     }
