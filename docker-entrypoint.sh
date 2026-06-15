@@ -12,5 +12,5 @@ echo "Running database migrations..."
 php artisan migrate --force
 
 # Start the application server
-echo "Starting Laravel API server on port 8000..."
-exec php artisan serve --host=0.0.0.0 --port=8000
+echo "Starting Laravel API server on port ${PORT:-8000}..."
+exec php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
