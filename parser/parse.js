@@ -1,5 +1,4 @@
 const { chromium } = require('playwright-chromium');
-const fs = require('fs');
 
 async function main() {
     const url = process.argv[2];
@@ -26,7 +25,6 @@ async function main() {
             timezoneId: 'Europe/Moscow'
         });
 
-        // Set automation control bypass
         await context.addInitScript(() => {
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
@@ -34,63 +32,86 @@ async function main() {
         });
 
         const page = await context.newPage();
-        
-        // Navigate to URL and wait for domcontentloaded
+
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        
-        // Wait up to 5 seconds for organization name/rating block to render
+
         try {
-            await page.waitForSelector('h1, .orgpage-header-view__header', { timeout: 10000 });
+            await page.waitForSelector('[class*="business-card-view"], h1', { timeout: 15000 });
         } catch (e) {
-            // Continue even if selector fails, maybe it loaded
+            // Continue even if selector fails
         }
 
-        // Get organization general details
+        // Extract org info from schema.org structured data and DOM
         const orgInfo = await page.evaluate(() => {
-            const nameEl = document.querySelector('h1, .orgpage-header-view__header, [class*="header-view__header"]');
-            const name = nameEl ? nameEl.innerText.trim() : null;
-
-            // Rating
-            const ratingEl = document.querySelector('.business-rating-badge-view__rating, [class*="rating-badge-view__rating"], [class*="rating-value"]');
+            let name = null;
             let rating = null;
-            if (ratingEl) {
-                const ratingStr = ratingEl.innerText.trim().replace(',', '.');
-                rating = parseFloat(ratingStr) || null;
-            }
-
-            // Look for rating and reviews count in elements
             let ratingCount = null;
             let reviewCount = null;
-            
-            const textElements = Array.from(document.querySelectorAll('span, div, a, p'));
-            for (const el of textElements) {
-                const text = el.innerText || '';
-                
-                // Russian pattern
-                if (text.includes('оценк') && !ratingCount) {
-                    const match = text.match(/(\d[\d\s]*)\s*оцен/);
-                    if (match) {
-                        ratingCount = parseInt(match[1].replace(/\s/g, ''), 10);
-                    }
-                }
-                if (text.includes('отзыв') && !reviewCount) {
-                    const match = text.match(/(\d[\d\s]*)\s*отзыв/);
-                    if (match) {
-                        reviewCount = parseInt(match[1].replace(/\s/g, ''), 10);
-                    }
-                }
 
-                // English pattern fallbacks
-                if (text.includes('rating') && !ratingCount) {
-                    const match = text.match(/(\d[\d\s]*)\s*rating/i);
-                    if (match) {
-                        ratingCount = parseInt(match[1].replace(/\s/g, ''), 10);
-                    }
+            // Try schema.org first (most reliable)
+            const aggRating = document.querySelector('[itemProp="aggregateRating"]');
+            if (aggRating) {
+                const rv = aggRating.querySelector('[itemProp="ratingValue"]');
+                const rc = aggRating.querySelector('[itemProp="reviewCount"]');
+                const rtc = aggRating.querySelector('[itemProp="ratingCount"]');
+                if (rv) rating = parseFloat(rv.getAttribute('content')) || null;
+                if (rc) reviewCount = parseInt(rc.getAttribute('content'), 10) || null;
+                if (rtc) ratingCount = parseInt(rtc.getAttribute('content'), 10) || null;
+            }
+
+            // Fallback for rating: check business rating badge class
+            if (!rating) {
+                const ratingEl = document.querySelector('.business-summary-rating-badge-view__rating, .business-header-rating-view__rating, [class*="summary-rating-badge-view__rating"]');
+                if (ratingEl) {
+                    const val = parseFloat(ratingEl.innerText.replace(',', '.'));
+                    if (!isNaN(val)) rating = val;
                 }
-                if (text.includes('review') && !reviewCount) {
-                    const match = text.match(/(\d[\d\s]*)\s*review/i);
-                    if (match) {
-                        reviewCount = parseInt(match[1].replace(/\s/g, ''), 10);
+            }
+
+            // Fallback for ratingCount: check rating count badge class
+            if (!ratingCount) {
+                const ratingCountEl = document.querySelector('.business-summary-rating-badge-view__rating-count, [class*="summary-rating-badge-view__rating-count"]');
+                if (ratingCountEl) {
+                    const text = ratingCountEl.innerText || '';
+                    const m = text.match(/(\d[\d\s]*)/);
+                    if (m) ratingCount = parseInt(m[1].replace(/\s/g, ''), 10);
+                }
+            }
+
+            // Fallback for reviewCount: check reviews tab title
+            if (!reviewCount) {
+                const reviewsTab = document.querySelector('.tabs-select-view__title._name_reviews, [class*="tabs-select-view__title"][class*="_name_reviews"]');
+                if (reviewsTab) {
+                    const text = reviewsTab.innerText || '';
+                    const m = text.match(/(\d[\d\s]*)/);
+                    if (m) reviewCount = parseInt(m[1].replace(/\s/g, ''), 10);
+                }
+            }
+
+            // Name from h1 or business card header
+            const nameEl = document.querySelector('h1, [class*="orgpage-header-view__header"], [class*="card-title-view__title"]');
+            if (nameEl) name = nameEl.innerText.trim();
+
+            // Fallback: try text patterns for counts if still not found
+            if (!ratingCount || !reviewCount) {
+                const textElements = Array.from(document.querySelectorAll('span, div, a, p'));
+                for (const el of textElements) {
+                    const text = el.innerText || '';
+                    if (!ratingCount && /оценк/i.test(text)) {
+                        const m = text.match(/(\d[\d\s]*)\s*оцен/);
+                        if (m) ratingCount = parseInt(m[1].replace(/\s/g, ''), 10);
+                    }
+                    if (!reviewCount && /отзыв/i.test(text)) {
+                        const m = text.match(/(\d[\d\s]*)\s*отзыв/);
+                        if (m) reviewCount = parseInt(m[1].replace(/\s/g, ''), 10);
+                    }
+                    if (!ratingCount && /\brating\b/i.test(text)) {
+                        const m = text.match(/(\d[\d\s]*)\s*rating/i);
+                        if (m) ratingCount = parseInt(m[1].replace(/\s/g, ''), 10);
+                    }
+                    if (!reviewCount && /\breview\b/i.test(text)) {
+                        const m = text.match(/(\d[\d\s]*)\s*review/i);
+                        if (m) reviewCount = parseInt(m[1].replace(/\s/g, ''), 10);
                     }
                 }
             }
@@ -98,34 +119,71 @@ async function main() {
             return { name, rating, ratingCount, reviewCount };
         });
 
-        // Ensure we find reviews tab if not already there, or try scrolling
-        // Yandex orgpage can load reviews tab directly if URL has /reviews/
-        // Scroll loop
+        // Navigate to reviews: click the Reviews tab
+        const reviewsTabClicked = await page.evaluate(() => {
+            // Try clicking the Reviews tab by various selectors
+            const selectors = [
+                '[class*="tabs-select-view__title _name_reviews"]',
+                '[class*="tabs-select-view__title"][class*="_name_reviews"]',
+                'a[href*="/reviews/"]',
+                '[role="tab"][class*="_name_reviews"]'
+            ];
+            for (const sel of selectors) {
+                const el = document.querySelector(sel);
+                if (el) {
+                    el.click();
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        if (reviewsTabClicked) {
+            // Wait for reviews to load after clicking tab
+            await page.waitForTimeout(2000);
+        } else {
+            // Try clicking "View all N review" button
+            const viewAllClicked = await page.evaluate(() => {
+                const btn = document.querySelector('[class*="business-reviews-card-view__more"] [role="button"], [class*="business-reviews-card-view__more"]');
+                if (btn) {
+                    btn.click();
+                    return true;
+                }
+                return false;
+            });
+            if (viewAllClicked) {
+                await page.waitForTimeout(2000);
+            }
+        }
+
+        // Wait for individual review elements to appear
+        try {
+            await page.waitForSelector('.business-review-view, [class*="business-review-view "], .business-reviews-card-view', { timeout: 15000 });
+        } catch (e) {
+            // Reviews might not have loaded; continue anyway
+        }
+
+        // Scroll to load all reviews
         let lastCount = 0;
         let noChangeCount = 0;
         const targetCount = 600;
-        const maxScrolls = 60; // Up to 60 scroll iterations
+        const maxScrolls = 60;
 
         for (let i = 0; i < maxScrolls; i++) {
-            const currentCount = await page.locator('.business-reviews-card-view, [class*="business-reviews-card-view"]').count();
-            
-            if (currentCount >= targetCount) {
-                break;
-            }
+            const currentCount = await page.locator('.business-review-view, .business-reviews-card-view').count();
+
+            if (currentCount >= targetCount) break;
 
             if (currentCount === lastCount) {
                 noChangeCount++;
-                if (noChangeCount >= 6) {
-                    break; // No new content loaded after 6 attempts, assume end
-                }
+                if (noChangeCount >= 6) break;
             } else {
                 noChangeCount = 0;
                 lastCount = currentCount;
             }
 
-            // Perform scroll inside the container or fallback to body
             await page.evaluate(() => {
-                const container = document.querySelector('.scroll__content, [class*="scroll__content"], .business-tab-wrapper__content');
+                const container = document.querySelector('.scroll__content, [class*="scroll__content"], .business-tab-wrapper__content, [class*="business-reviews-card-view__reviews-container"]');
                 if (container) {
                     container.scrollTo(0, container.scrollHeight);
                 } else {
@@ -133,44 +191,65 @@ async function main() {
                 }
             });
 
-            // Random delay 800ms to 1500ms
             await page.waitForTimeout(800 + Math.random() * 700);
         }
 
-        // Extract reviews data
+        // Extract reviews using correct selectors
         const reviews = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.business-reviews-card-view, [class*="business-reviews-card-view"]');
+            const cards = document.querySelectorAll('.business-review-view, .business-reviews-card-view');
             return Array.from(cards).map(card => {
                 // Author Name
-                const authorEl = card.querySelector('.business-reviews-card-view__author [class*="name"], .business-reviews-card-view__author, [class*="author"]');
+                const authorEl = card.querySelector('.business-review-view__author-name span[itemprop="name"], .business-review-view__author-name, .business-reviews-card-view__author [class*="name"], .business-reviews-card-view__author');
                 const authorName = authorEl ? authorEl.innerText.trim() : 'Аноним';
 
                 // Author Avatar
-                const avatarEl = card.querySelector('.user-avatar__image, [class*="avatar"] img');
-                const authorAvatar = avatarEl ? avatarEl.getAttribute('src') : null;
+                let authorAvatar = null;
+                const metaAvatar = card.querySelector('.business-review-view__author-name meta[itemprop="image"]');
+                if (metaAvatar) {
+                    authorAvatar = metaAvatar.getAttribute('content');
+                } else {
+                    const avatarDiv = card.querySelector('.user-icon-view__icon');
+                    if (avatarDiv) {
+                        const style = avatarDiv.getAttribute('style') || '';
+                        const m = style.match(/url\("?([^"]+)"?\)/);
+                        if (m) authorAvatar = m[1];
+                    }
+                }
+                if (!authorAvatar) {
+                    const avatarImg = card.querySelector('.business-review-view__author-image img, .business-review-view__user-icon img, .user-avatar__image, [class*="avatar"] img');
+                    if (avatarImg) {
+                        authorAvatar = avatarImg.getAttribute('src') || avatarImg.getAttribute('data-src') || null;
+                    }
+                }
 
-                // Text
-                const textEl = card.querySelector('.business-reviews-card-view__text, [class*="text"], [class*="body"]');
+                // Review Text
+                const textEl = card.querySelector('.business-review-view__body, .business-review-view__text, .business-reviews-card-view__text');
                 const text = textEl ? textEl.innerText.trim() : '';
 
                 // Date
-                const dateEl = card.querySelector('.business-reviews-card-view__date, [class*="date"]');
+                const dateEl = card.querySelector('.business-review-view__date, .business-reviews-card-view__date, [class*="date"]');
                 const publishedAtStr = dateEl ? dateEl.innerText.trim() : '';
 
-                // Rating
-                const starsContainer = card.querySelector('.business-rating-stars-view, [class*="stars-view"]');
+                // Rating from schema.org meta tags or star badges
                 let rating = 5;
-                if (starsContainer) {
-                    const ariaLabel = starsContainer.getAttribute('aria-label');
-                    if (ariaLabel) {
-                        const match = ariaLabel.match(/(\d)/);
-                        if (match) {
-                            rating = parseInt(match[1], 10);
-                        }
-                    } else {
-                        const filledStars = starsContainer.querySelectorAll('.business-rating-stars-view__star_active, [class*="star_active"], [class*="star_filled"], [class*="star--filled"]');
-                        if (filledStars.length > 0) {
-                            rating = filledStars.length;
+                const ratingMeta = card.querySelector('meta[itemprop="ratingValue"]');
+                if (ratingMeta) {
+                    const val = parseFloat(ratingMeta.getAttribute('content'));
+                    if (!isNaN(val)) rating = val;
+                } else {
+                    const starsContainer = card.querySelector('.business-review-view__rating, .business-rating-badge-view, .business-rating-stars-view, [class*="stars-view"]');
+                    if (starsContainer) {
+                        const labeledEl = starsContainer.hasAttribute('aria-label') ? starsContainer : starsContainer.querySelector('[aria-label]');
+                        const ariaLabel = labeledEl ? labeledEl.getAttribute('aria-label') : null;
+                        if (ariaLabel) {
+                            const m = ariaLabel.match(/(\d+)/);
+                            if (m) rating = parseInt(m[1], 10);
+                        } else {
+                            const filledStars = starsContainer.querySelectorAll('.business-rating-badge-view__star._full, .business-rating-stars-view__star_active, [class*="star_active"], [class*="star_filled"], [class*="star--filled"]');
+                            const halfStars = starsContainer.querySelectorAll('.business-rating-badge-view__star._half');
+                            if (filledStars.length > 0 || halfStars.length > 0) {
+                                rating = filledStars.length + (halfStars.length > 0 ? 0.5 : 0);
+                            }
                         }
                     }
                 }
