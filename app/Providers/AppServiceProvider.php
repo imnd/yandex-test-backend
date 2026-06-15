@@ -11,9 +11,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $isProductionOrHttps = env('APP_ENV') === 'production'
+        $isProductionOrHttps = config('app.env') === 'production'
             || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
             || (isset($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'onrender.com'));
+
+        config([
+            'session.debug_is_prod' => $isProductionOrHttps,
+            'session.debug_app_env' => config('app.env'),
+            'session.debug_server' => isset($_SERVER['HTTP_X_FORWARDED_PROTO']) ? $_SERVER['HTTP_X_FORWARDED_PROTO'] : 'none',
+        ]);
 
         if ($isProductionOrHttps) {
             config(['session.secure' => true]);
