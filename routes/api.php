@@ -21,6 +21,16 @@ Route::get('/csrf-token', function () {
     ]);
 });
 
+Route::get('/debug-session', function () {
+    return response()->json([
+        'session_config' => config('session'),
+        'server' => array_intersect_key($_SERVER, array_flip([
+            'HTTP_HOST', 'HTTP_X_FORWARDED_PROTO', 'HTTPS', 'APP_ENV'
+        ])),
+        'app_env' => env('APP_ENV'),
+    ]);
+});
+
 // Authentication Routes
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
