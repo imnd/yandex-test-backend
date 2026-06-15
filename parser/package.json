@@ -1,0 +1,10 @@
+{
+  "name": "yandex-maps-reviews-parser",
+  "version": "1.0.0",
+  "description": "Scrapes reviews from Yandex Maps org pages using Playwright",
+  "main": "parse.js",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright-chromium": "^1.49.0"
+  }
+}
