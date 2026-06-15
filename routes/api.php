@@ -31,6 +31,16 @@ Route::get('/debug-session', function () {
     ]);
 });
 
+Route::get('/debug-middleware', function () {
+    $request = request();
+    return response()->json([
+        'secure_check' => $request->secure(),
+        'host' => $request->getHost(),
+        'has_onrender' => str_contains($request->getHost(), 'onrender.com'),
+        'x_forwarded_proto' => $request->header('X-Forwarded-Proto'),
+    ]);
+});
+
 // Authentication Routes
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
