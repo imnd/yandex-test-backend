@@ -32,7 +32,7 @@ class ForceSessionCookies
                         true, // secure
                         $cookie->isHttpOnly(),
                         $cookie->isRaw(),
-                        $request->secure() ? 'none' : 'lax' // sameSite
+                        ($request->secure() || config('session.force_secure', false)) ? 'none' : 'lax' // sameSite
                     );
                     $response->headers->setCookie($newCookie);
                 }
