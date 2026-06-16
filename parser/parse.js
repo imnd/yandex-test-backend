@@ -265,7 +265,14 @@ async function main() {
             reviewsCount: reviews.length,
             reviews
         };
-
+        if (!orgInfo.name) {
+            console.error(JSON.stringify({
+                success: false,
+                error: 'ORG_NOT_FOUND',
+                message: 'Could not extract organization name from page'
+            }));
+            process.exit(1);
+        }
         console.log(JSON.stringify(output));
     } catch (err) {
         console.error(JSON.stringify({
