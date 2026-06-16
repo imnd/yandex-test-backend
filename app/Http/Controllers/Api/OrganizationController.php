@@ -141,9 +141,17 @@ class OrganizationController extends Controller
      */
     public function getReviews(): JsonResponse
     {
-        return response()->json(
-            $this->organizationService->getReviews(50)
-        );
+        $paginator = $this->organizationService->getReviews(50);
+
+        return response()->json([
+            'reviews' => $paginator->items(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
     }
 
     /**
