@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 class ForceSessionCookies
@@ -17,12 +18,12 @@ class ForceSessionCookies
 
         $isProductionOrHttps = config('app.env') === 'production'
             || $request->secure()
-            || str_contains($request->getHost(), 'onrender.com');
+            || config('session.force_secure', false);
 
         if ($isProductionOrHttps && isset($response->headers)) {
             foreach ($response->headers->getCookies() as $cookie) {
                 if (in_array($cookie->getName(), ['laravel_session', 'XSRF-TOKEN']) || str_ends_with($cookie->getName(), '-session')) {
-                    $newCookie = new \Symfony\Component\HttpFoundation\Cookie(
+                    $newCookie = new Cookie(
                         $cookie->getName(),
                         $cookie->getValue(),
                         $cookie->getExpiresTime(),
@@ -31,7 +32,7 @@ class ForceSessionCookies
                         true, // secure
                         $cookie->isHttpOnly(),
                         $cookie->isRaw(),
-                        'none' // sameSite
+                        $request->secure() ? 'none' : 'lax' // sameSite
                     );
                     $response->headers->setCookie($newCookie);
                 }

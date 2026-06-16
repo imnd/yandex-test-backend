@@ -171,6 +171,8 @@ return [
 
     'secure' => env('SESSION_SECURE_COOKIE', false),
 
+    'force_secure' => env('SESSION_FORCE_SECURE_COOKIE', false),
+
     /*
     |--------------------------------------------------------------------------
     | HTTP Access Only
