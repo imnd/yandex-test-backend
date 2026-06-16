@@ -32,8 +32,8 @@ class ParseOrganizationJob implements ShouldQueue
         $this->organization = $organization;
     }
 
-    public function handle(YandexParsingOrchestrator $parserService): void
+    public function handle(YandexParsingOrchestrator $orchestrator): void
     {
-        $parserService->parse($this->organization);
+        $orchestrator->parse($this->organization);
     }
 }
