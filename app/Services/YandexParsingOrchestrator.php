@@ -36,7 +36,8 @@ class YandexParsingOrchestrator
 
             $this->organizationService->saveData($organization, $scrapedData);
             Log::info("Successfully saved organization with ID: {$organization->id}");
-        } catch (ParseException | QueryException $e) {
+        } catch (\Throwable $e) {
+            $process = "processing";
             if ($e instanceof ParseException) {
                 $process = "parsing";
             }
