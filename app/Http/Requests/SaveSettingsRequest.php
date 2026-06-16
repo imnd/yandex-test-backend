@@ -31,11 +31,12 @@ class SaveSettingsRequest extends FormRequest
                     $host = $parsedUrl['host'] ?? '';
                     $path = $parsedUrl['path'] ?? '';
 
-                    $isYandex = str_contains($host, 'yandex.ru') ||
-                                str_contains($host, 'yandex.com') ||
-                                str_contains($host, 'yandex.kz') ||
-                                str_contains($host, 'yandex.by') ||
-                                str_contains($host, 'yandex.ua');
+                    $isYandex = collect([
+                        'yandex.ru', 'yandex.com', 'yandex.kz',
+                        'yandex.by', 'yandex.ua'
+                    ])->contains(
+                        fn ($domain) => $host === $domain || str_ends_with($host, '.' . $domain)
+                    );
 
                     $isMaps = str_contains($path, '/maps/');
 
