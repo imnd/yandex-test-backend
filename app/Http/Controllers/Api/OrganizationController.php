@@ -114,23 +114,26 @@ class OrganizationController extends Controller
      *         required=false,
      *         @OA\Schema(type="integer", default=1)
      *     ),
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         description="Items per page (max 100)",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=50, maximum=100)
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="Paginated reviews",
      *         @OA\JsonContent(
-     *             @OA\Property(property="current_page", type="integer", example=1),
-     *             @OA\Property(property="data", type="array",
-     *                 @OA\Items(
-     *                     @OA\Property(property="id", type="integer", example=1),
-     *                     @OA\Property(property="organization_id", type="integer", example=1),
-     *                     @OA\Property(property="author_name", type="string", example="John Doe"),
-     *                     @OA\Property(property="author_avatar", type="string", nullable=true, example="https://example.com/avatar.jpg"),
-     *                     @OA\Property(property="rating", type="integer", example=5),
-     *                     @OA\Property(property="text", type="string", example="Great service!"),
-     *                     @OA\Property(property="published_at_str", type="string", example="2 дня назад")
-     *                 )
+     *             @OA\Property(property="reviews", type="array",
+     *                 @OA\Items(ref="#/components/schemas/Review")
      *             ),
-     *             @OA\Property(property="total", type="integer", example=1)
+     *             @OA\Property(property="pagination", type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="last_page", type="integer", example=5),
+     *                 @OA\Property(property="per_page", type="integer", example=50),
+     *                 @OA\Property(property="total", type="integer", example=250)
+     *             )
      *         )
      *     ),
      *     @OA\Response(
@@ -139,9 +142,10 @@ class OrganizationController extends Controller
      *     )
      * )
      */
-    public function getReviews(): JsonResponse
+    public function getReviews(Request $request): JsonResponse
     {
-        $paginator = $this->organizationService->getReviews(50);
+        $perPage = min($request->integer('per_page', 50), 100);
+        $paginator = $this->organizationService->getReviews($perPage);
 
         return response()->json([
             'reviews' => $paginator->items(),
