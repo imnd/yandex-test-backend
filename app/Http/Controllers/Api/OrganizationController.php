@@ -4,103 +4,177 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveSettingsRequest;
-use App\Jobs\ParseOrganizationJob;
-use App\Models\Organization;
+use App\Services\OrganizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * @OA\Tag(
+ *     name="Organization",
+ *     description="Endpoints to manage Yandex Maps Organization and reviews"
+ * )
+ */
 class OrganizationController extends Controller
 {
+    protected OrganizationService $organizationService;
+
+    public function __construct(OrganizationService $organizationService)
+    {
+        $this->organizationService = $organizationService;
+    }
+
     /**
-     * Get the current active organization.
+     * @OA\Get(
+     *     path="/api/organization",
+     *     summary="Get the current active organization",
+     *     tags={"Organization"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Success",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="organization", type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="yandex_id", type="string", example="1124715036"),
+     *                 @OA\Property(property="url", type="string", example="https://yandex.ru/maps/org/1124715036"),
+     *                 @OA\Property(property="name", type="string", example="Yandex"),
+     *                 @OA\Property(property="rating", type="number", format="float", example=4.5),
+     *                 @OA\Property(property="rating_count", type="integer", example=120),
+     *                 @OA\Property(property="review_count", type="integer", example=100),
+     *                 @OA\Property(property="status", type="string", example="completed"),
+     *                 @OA\Property(property="error_message", type="string", nullable=true, example=null),
+     *                 @OA\Property(property="last_parsed_at", type="string", format="date-time", example="2026-06-16T12:00:00Z")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     )
+     * )
      */
     public function getOrganization(): JsonResponse
     {
-        $organization = Organization::first();
-
         return response()->json([
-            'organization' => $organization,
+            'organization' => $this->organizationService->getActiveOrganization(),
         ]);
     }
 
     /**
-     * Save the Yandex Maps organization URL and trigger parsing.
+     * @OA\Post(
+     *     path="/api/organization/settings",
+     *     summary="Save Yandex Maps URL and start reviews import",
+     *     tags={"Organization"},
+     *     security={{"sanctum":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"url"},
+     *             @OA\Property(property="url", type="string", example="https://yandex.ru/maps/org/1124715036")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="URL saved and parsing started",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Organization URL saved. Reviews import started."),
+     *             @OA\Property(property="organization", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     )
+     * )
      */
     public function saveSettings(SaveSettingsRequest $request): JsonResponse
     {
         $url = $request->input('url');
-        
-        // Extract temporary or parsed yandex ID from URL
-        $yandexId = 'pending_' . uniqid();
-        if (preg_match('/\/org\/(?:[^\/]+\/)?(\d+)/', $url, $matches)) {
-            $yandexId = $matches[1];
-        }
-
-        // Delete all other organizations to keep only one active dashboard
-        Organization::query()->delete();
-
-        // Create new organization entry
-        $organization = Organization::create([
-            'yandex_id' => $yandexId,
-            'url' => $url,
-            'status' => 'pending',
-            'error_message' => null,
-        ]);
-
-        // Dispatch background queue job
-        ParseOrganizationJob::dispatch($organization);
 
         return response()->json([
             'message' => 'Organization URL saved. Reviews import started.',
-            'organization' => $organization,
+            'organization' => $this->organizationService->saveSettings($url),
         ]);
     }
 
     /**
-     * Get reviews for the active organization (paginated, 50 per page).
+     * @OA\Get(
+     *     path="/api/organization/reviews",
+     *     summary="Get reviews for the active organization (paginated)",
+     *     tags={"Organization"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Paginated reviews",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="current_page", type="integer", example=1),
+     *             @OA\Property(property="data", type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="organization_id", type="integer", example=1),
+     *                     @OA\Property(property="author_name", type="string", example="John Doe"),
+     *                     @OA\Property(property="author_avatar", type="string", nullable=true, example="https://example.com/avatar.jpg"),
+     *                     @OA\Property(property="rating", type="integer", example=5),
+     *                     @OA\Property(property="text", type="string", example="Great service!"),
+     *                     @OA\Property(property="published_at_str", type="string", example="2 дня назад")
+     *                 )
+     *             ),
+     *             @OA\Property(property="total", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     )
+     * )
      */
-    public function getReviews(Request $request): JsonResponse
+    public function getReviews(): JsonResponse
     {
-        $organization = Organization::first();
-
-        if (!$organization) {
-            return response()->json([
-                'data' => [],
-                'total' => 0,
-            ]);
-        }
-
-        // Paginate by 50 reviews, ordered by ID desc
-        $reviews = $organization->reviews()
-            ->orderBy('id', 'desc')
-            ->paginate(50);
-
-        return response()->json($reviews);
+        return response()->json(
+            $this->organizationService->getReviews(50)
+        );
     }
 
     /**
-     * Manually trigger re-parsing of the current organization reviews.
+     * @OA\Post(
+     *     path="/api/organization/refresh",
+     *     summary="Manually trigger re-parsing of the current organization reviews",
+     *     tags={"Organization"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Refresh started",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Reviews refresh started."),
+     *             @OA\Property(property="organization", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Organization not configured"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated"
+     *     )
+     * )
      */
     public function refreshReviews(): JsonResponse
     {
-        $organization = Organization::first();
-
-        if (!$organization) {
-            return response()->json([
-                'message' => 'No organization configured.',
-            ], 404);
-        }
-
-        $organization->update([
-            'status' => 'pending',
-            'error_message' => null,
-        ]);
-
-        ParseOrganizationJob::dispatch($organization);
-
         return response()->json([
             'message' => 'Reviews refresh started.',
-            'organization' => $organization,
+            'organization' => $this->organizationService->refreshReviews(),
         ]);
     }
 }

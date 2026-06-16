@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Organization;
-use App\Services\YandexParserService;
+use App\Services\YandexParsingOrchestrator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,31 +17,23 @@ class ParseOrganizationJob implements ShouldQueue
 
     /**
      * The number of seconds the job can run before timing out.
-     *
-     * @var int
      */
-    public $timeout = 180;
+    public int $timeout = 180;
+
+    /**
+     * The number of times the job may be attempted.
+     */
+    public int $tries = 10;
 
     protected Organization $organization;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(Organization $organization)
     {
         $this->organization = $organization;
     }
 
-    /**
-     * Execute the job.
-     */
-    public function handle(YandexParserService $parserService): void
+    public function handle(YandexParsingOrchestrator $parserService): void
     {
-        try {
-            $parserService->parse($this->organization);
-        } catch (Exception $e) {
-            // Re-throw to mark job as failed
-            throw $e;
-        }
+        $parserService->parse($this->organization);
     }
 }

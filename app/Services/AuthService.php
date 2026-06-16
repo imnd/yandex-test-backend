@@ -8,8 +8,6 @@ use Illuminate\Validation\ValidationException;
 class AuthService
 {
     /**
-     * Attempt login with credentials.
-     *
      * @throws ValidationException
      */
     public function attemptLogin(array $credentials): void
@@ -23,9 +21,6 @@ class AuthService
         request()->session()->regenerate();
     }
 
-    /**
-     * Log out current user.
-     */
     public function logout(): void
     {
         Auth::guard('web')->logout();

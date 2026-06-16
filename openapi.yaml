@@ -1,0 +1,401 @@
+openapi: 3.0.0
+info:
+  title: Yandex Reviews Parser API
+  version: 1.0.0
+  description: API documentation for Yandex Reviews Parser and Dashboard application
+servers:
+  - url: http://localhost:8000
+    description: Local Development API Server
+tags:
+  - name: Authentication
+    description: User Authentication API endpoints
+  - name: Organization
+    description: Endpoints to manage Yandex Maps Organization and reviews
+paths:
+  /api/auth/login:
+    post:
+      summary: Login user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@example.com
+                password:
+                  type: string
+                  format: password
+                  example: password
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged in successfully
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: Admin
+                      email:
+                        type: string
+                        example: admin@example.com
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: The email field is required.
+                  errors:
+                    type: object
+  /api/auth/logout:
+    post:
+      summary: Logout user
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Successful logout
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+  /api/organization:
+    get:
+      summary: Get the current active organization
+      tags:
+        - Organization
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organization:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      yandex_id:
+                        type: string
+                        example: "1124715036"
+                      url:
+                        type: string
+                        example: https://yandex.ru/maps/org/1124715036
+                      name:
+                        type: string
+                        example: Yandex
+                      rating:
+                        type: number
+                        format: float
+                        example: 4.5
+                      rating_count:
+                        type: integer
+                        example: 120
+                      review_count:
+                        type: integer
+                        example: 100
+                      status:
+                        type: string
+                        example: completed
+                      error_message:
+                        type: string
+                        nullable: true
+                        example: null
+                      last_parsed_at:
+                        type: string
+                        format: date-time
+                        example: "2026-06-16T12:00:00Z"
+        '401':
+          description: Unauthenticated
+  /api/organization/settings:
+    post:
+      summary: Save Yandex Maps URL and start reviews import
+      tags:
+        - Organization
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  example: https://yandex.ru/maps/org/1124715036
+      responses:
+        '200':
+          description: URL saved and parsing started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Organization URL saved. Reviews import started.
+                  organization:
+                    type: object
+        '422':
+          description: Validation error
+        '401':
+          description: Unauthenticated
+  /api/organization/reviews:
+    get:
+      summary: Get reviews for the active organization (paginated)
+      tags:
+        - Organization
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Paginated reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_page:
+                    type: integer
+                    example: 1
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        organization_id:
+                          type: integer
+                          example: 1
+                        author_name:
+                          type: string
+                          example: John Doe
+                        author_avatar:
+                          type: string
+                          nullable: true
+                          example: https://example.com/avatar.jpg
+                        rating:
+                          type: integer
+                          example: 5
+                        text:
+                          type: string
+                          example: Great service!
+                        published_at_str:
+                          type: string
+                          example: 2 дня назад
+                  total:
+                    type: integer
+                    example: 1
+        '401':
+          description: Unauthenticated
+  /api/organization/refresh:
+    post:
+      summary: Manually trigger re-parsing of the current organization reviews
+      tags:
+        - Organization
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Refresh started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Reviews refresh started.
+                  organization:
+                    type: object
+        '404':
+          description: Organization not configured
+        '401':
+          description: Unauthenticated
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+  schemas:
+    User:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          example: Admin
+        email:
+          type: string
+          format: email
+          example: admin@example.com
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
+    Organization:
+      type: object
+      required:
+        - yandex_id
+        - url
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          example: 1
+        yandex_id:
+          type: string
+          example: "1124715036"
+        url:
+          type: string
+          example: https://yandex.ru/maps/org/1124715036
+        name:
+          type: string
+          nullable: true
+          example: Yandex
+        rating:
+          type: number
+          format: float
+          nullable: true
+          example: 4.5
+        rating_count:
+          type: integer
+          nullable: true
+          example: 120
+        review_count:
+          type: integer
+          nullable: true
+          example: 100
+        status:
+          type: string
+          example: completed
+        error_message:
+          type: string
+          nullable: true
+          example: null
+        last_parsed_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
+    Review:
+      type: object
+      required:
+        - organization_id
+        - author_name
+        - rating
+        - text
+        - published_at_str
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          example: 1
+        organization_id:
+          type: integer
+          example: 1
+        author_name:
+          type: string
+          example: John Doe
+        author_avatar:
+          type: string
+          nullable: true
+          example: https://example.com/avatar.jpg
+        rating:
+          type: integer
+          example: 5
+        text:
+          type: string
+          example: Great service!
+        published_at_str:
+          type: string
+          example: 2 дня назад
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          example: "2026-06-16T12:00:00Z"
