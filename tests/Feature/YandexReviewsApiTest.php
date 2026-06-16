@@ -35,6 +35,8 @@ class YandexReviewsApiTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => 'admin@example.com',
             'password' => 'password',
+        ], [
+            'referer' => 'http://localhost',
         ]);
 
         $response->assertStatus(200)
@@ -54,6 +56,8 @@ class YandexReviewsApiTest extends TestCase
         $response = $this->postJson('/api/auth/login', [
             'email' => 'admin@example.com',
             'password' => 'wrong-password',
+        ], [
+            'referer' => 'http://localhost',
         ]);
 
         $response->assertStatus(422)

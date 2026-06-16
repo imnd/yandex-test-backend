@@ -15,17 +15,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/csrf-token', function () {
-    return response()->json([
-        'token' => csrf_token(),
-    ]);
-});
-
 // Authentication Routes
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
     });
