@@ -1,28 +1,72 @@
 const { chromium } = require('playwright-chromium');
 
+const RV = 'business-review-view';
+const RC = 'business-reviews-card-view';
+
+const any = (...classes) => classes.join(', ');
+
 const S = {
     org: {
         cardView: '[class*="business-card-view"], h1',
-        rating: '.business-summary-rating-badge-view__rating, .business-header-rating-view__rating, [class*="summary-rating-badge-view__rating"]',
-        ratingCount: '.business-summary-rating-badge-view__rating-count, [class*="summary-rating-badge-view__rating-count"]',
-        reviewCount: '.tabs-select-view__title._name_reviews, [class*="tabs-select-view__title"][class*="_name_reviews"]',
-        name: 'h1, [class*="orgpage-header-view__header"], [class*="card-title-view__title"]',
+        rating: any(
+            '.business-summary-rating-badge-view__rating',
+            '.business-header-rating-view__rating',
+            '[class*="summary-rating-badge-view__rating"]',
+        ),
+        ratingCount: any(
+            '.business-summary-rating-badge-view__rating-count',
+            '[class*="summary-rating-badge-view__rating-count"]',
+        ),
+        reviewCount: any(
+            '.tabs-select-view__title._name_reviews',
+            '[class*="tabs-select-view__title"][class*="_name_reviews"]',
+        ),
+        name: any('h1', '[class*="orgpage-header-view__header"]', '[class*="card-title-view__title"]'),
     },
     reviews: {
-        waitFor: '.business-review-view, [class*="business-review-view "], .business-reviews-card-view',
-        card: '.business-review-view, .business-reviews-card-view',
-        author: '.business-review-view__author-name span[itemprop="name"], .business-review-view__author-name, .business-reviews-card-view__author [class*="name"], .business-reviews-card-view__author',
-        authorAvatarMeta: '.business-review-view__author-name meta[itemprop="image"]',
+        waitFor: any(RV, `[class*="${RV} "]`, RC),
+        card: any(RV, RC),
+        author: any(
+            `.${RV}__author-name span[itemprop="name"]`,
+            `.${RV}__author-name`,
+            `.${RC}__author [class*="name"]`,
+            `.${RC}__author`,
+        ),
+        authorAvatarMeta: `.${RV}__author-name meta[itemprop="image"]`,
         authorAvatarDiv: '.user-icon-view__icon',
-        authorAvatarImg: '.business-review-view__author-image img, .business-review-view__user-icon img, .user-avatar__image, [class*="avatar"] img',
-        text: '.business-review-view__body, .business-review-view__text, .business-reviews-card-view__text',
-        date: '.business-review-view__date, .business-reviews-card-view__date, [class*="date"]',
+        authorAvatarImg: any(
+            `.${RV}__author-image img`,
+            `.${RV}__user-icon img`,
+            '.user-avatar__image',
+            '[class*="avatar"] img',
+        ),
+        text: any(`.${RV}__body`, `.${RV}__text`, `.${RC}__text`),
+        date: any(`.${RV}__date`, `.${RC}__date`, '[class*="date"]'),
         ratingMeta: 'meta[itemprop="ratingValue"]',
-        ratingContainer: '.business-review-view__rating, .business-rating-badge-view, .business-rating-stars-view, [class*="stars-view"]',
-        starFilled: '.business-rating-badge-view__star._full, .business-rating-stars-view__star_active, [class*="star_active"], [class*="star_filled"], [class*="star--filled"]',
+        ratingContainer: any(
+            `.${RV}__rating`,
+            '.business-rating-badge-view',
+            '.business-rating-stars-view',
+            '[class*="stars-view"]',
+        ),
+        starFilled: any(
+            '.business-rating-badge-view__star._full',
+            '.business-rating-stars-view__star_active',
+            '[class*="star_active"]',
+            '[class*="star_filled"]',
+            '[class*="star--filled"]',
+        ),
         starHalf: '.business-rating-badge-view__star._half',
-        viewAll: '[class*="business-reviews-card-view__more"] [role="button"], [class*="business-reviews-card-view__more"]',
-        scrollContainer: '.scroll__content, [class*="scroll__content"], .business-tab-wrapper__content, [class*="business-reviews-card-view__reviews-container"]',
+        viewAll: any(
+            `[class*="${RC}__more"] [role="button"]`,
+            `[class*="${RC}__more"]`,
+        ),
+        scrollContainer: any(
+            '.scroll__content',
+            '[class*="scroll__content"]',
+            '.business-tab-wrapper__content',
+            `[class*="${RC}__reviews-container"]`,
+        ),
     },
     reviewsTab: [
         '[class*="tabs-select-view__title _name_reviews"]',
@@ -73,11 +117,7 @@ async function main() {
 
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
-        try {
-            await page.waitForSelector(S.org.cardView, { timeout: 15000 });
-        } catch (e) {
-            // Continue even if selector fails
-        }
+        await page.waitForSelector(S.org.cardView, { timeout: 15000 });
 
         const orgInfo = await page.evaluate((s) => {
             let name = null;
