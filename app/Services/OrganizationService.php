@@ -25,7 +25,7 @@ class OrganizationService
     public function saveSettings(string $url): Organization
     {
         if (!$yandexId = $this->extractYandexId($url)) {
-            $yandexId = 'pending_' . uniqid();
+            $yandexId = 'pending_' . bin2hex(random_bytes(8));
         }
 
         // Delete all other organizations to keep only one active dashboard
