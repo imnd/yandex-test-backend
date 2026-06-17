@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\Proxy;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Exception;
 
 class YandexParsingOrchestrator
@@ -39,11 +40,11 @@ class YandexParsingOrchestrator
         while ($attempt < $maxAttempts) {
             $attempt++;
 
-            // Select a random active proxy (different each attempt)
+            // Select a random active proxy (different each attempt) and check it before running
             // On the final attempt, we run without a proxy as a fallback
             $proxy = null;
             if ($attempt < $maxAttempts) {
-                $proxy = Proxy::where('is_active', true)->inRandomOrder()->first();
+                $proxy = $this->getWorkingProxy();
             }
 
             try {
@@ -98,5 +99,63 @@ class YandexParsingOrchestrator
         $this->organizationService->setFailedStatus($organization, $lastException->getMessage());
 
         throw $lastException;
+    }
+
+    /**
+     * Get a random active proxy from the database and verify it is working.
+     */
+    protected function getWorkingProxy(): ?Proxy
+    {
+        $maxChecks = 30;
+        $checked = 0;
+
+        while ($checked < $maxChecks) {
+            $proxy = Proxy::where('is_active', true)->inRandomOrder()->first();
+            if (!$proxy) {
+                return null;
+            }
+
+            $checked++;
+
+            if ($this->testProxyConnection($proxy->server)) {
+                return $proxy;
+            }
+
+            // If connection test failed, mark proxy as inactive immediately
+            $proxy->update([
+                'fails_count' => 3,
+                'is_active' => false,
+                'last_used_at' => now(),
+            ]);
+            
+            Log::warning("Proxy {$proxy->server} failed pre-flight connection test. Deactivated.");
+        }
+
+        return null;
+    }
+
+    /**
+     * Test connection to a proxy using a fast HTTP request.
+     */
+    protected function testProxyConnection(string $proxyUrl): bool
+    {
+        try {
+            $response = Http::timeout(2)
+                ->connectTimeout(2)
+                ->withOptions([
+                    'proxy' => $proxyUrl,
+                    'verify' => false,
+                ])
+                ->get('https://ya.ru');
+
+            if ($response->successful()) {
+                $body = $response->body();
+                return !str_contains($body, 'showcaptcha') && !str_contains($body, 'captcha');
+            }
+        } catch (\Throwable $e) {
+            // Connection failed or timed out
+        }
+
+        return false;
     }
 }
