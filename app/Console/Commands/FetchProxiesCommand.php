@@ -32,6 +32,14 @@ class FetchProxiesCommand extends Command
 
         $sources = [
             [
+                'url' => 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=ru&ssl=all&anonymity=all',
+                'protocol' => 'http',
+            ],
+            [
+                'url' => 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=ru&ssl=all&anonymity=all',
+                'protocol' => 'socks5',
+            ],
+            [
                 'url' => 'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
                 'protocol' => 'http',
             ],
