@@ -14,6 +14,9 @@ php artisan migrate --force
 echo "Seeding database..."
 php artisan db:seed --force
 
+echo "Fetching fresh proxies from external sources..."
+php artisan proxies:fetch
+
 # Start the queue worker in the background to process parsing jobs
 echo "Starting Laravel queue worker..."
 nohup php artisan queue:work --verbose --tries=3 --timeout=180 > /dev/null 2>&1 &
