@@ -108,9 +108,13 @@ async function main() {
         };
 
         if (process.env.SCRAPER_PROXY) {
-            contextOptions.proxy = {
-                server: process.env.SCRAPER_PROXY
-            };
+            const proxies = process.env.SCRAPER_PROXY.split(',').map(p => p.trim()).filter(Boolean);
+            if (proxies.length > 0) {
+                const randomProxy = proxies[Math.floor(Math.random() * proxies.length)];
+                contextOptions.proxy = {
+                    server: randomProxy
+                };
+            }
         }
 
         const context = await browser.newContext(contextOptions);
