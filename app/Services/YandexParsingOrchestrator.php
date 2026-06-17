@@ -45,6 +45,10 @@ class YandexParsingOrchestrator
             $proxy = null;
             if ($attempt < $maxAttempts) {
                 $proxy = $this->getWorkingProxy();
+                if (!$proxy) {
+                    // If no working proxies are available, jump straight to the final no-proxy fallback
+                    $attempt = $maxAttempts;
+                }
             }
 
             try {
