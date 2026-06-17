@@ -48,9 +48,9 @@ class ProxySeeder extends Seeder
                 $port = (int)$parts[1];
                 // Ports like 1080, 10801 are typically socks5. Others default to http
                 $protocol = ($port === 1080 || $port === 10801) ? 'socks5' : 'http';
-                $server = "{$protocol}://{$rawProxy}";
+                $server = "$protocol://$rawProxy";
 
-                Proxy::updateOrCreate(['server' => $server]);
+                Proxy::updateOrCreate(compact('server'));
             }
         }
     }

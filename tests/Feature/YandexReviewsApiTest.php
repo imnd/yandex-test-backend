@@ -126,7 +126,7 @@ class YandexReviewsApiTest extends TestCase
 
         $this->assertDatabaseHas('organizations', [
             'yandex_id' => '1124715036',
-            'url' => $url,
+            'url' => 'https://yandex.ru/maps/org/1124715036/',
             'status' => 'pending',
         ]);
 
@@ -161,13 +161,11 @@ class YandexReviewsApiTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'current_page',
-                'data' => [
+                'reviews' => [
                     '*' => ['id', 'organization_id', 'author_name', 'rating', 'text', 'published_at_str']
                 ],
-                'total',
-                'per_page'
+                'pagination' => ['current_page', 'last_page', 'per_page', 'total']
             ])
-            ->assertJsonPath('total', 10);
+            ->assertJsonPath('pagination.total', 10);
     }
 }
