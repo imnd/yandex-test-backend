@@ -24,8 +24,8 @@ const S = {
         name: any('h1', '[class*="orgpage-header-view__header"]', '[class*="card-title-view__title"]'),
     },
     reviews: {
-        waitFor: any(RV, `[class*="${RV} "]`, RC),
-        card: any(RV, RC),
+        waitFor: any(`.${RV}`, `[class*="${RV} "]`, `.${RC}`),
+        card: any(`.${RV}`, `.${RC}`),
         author: any(
             `.${RV}__author-name span[itemprop="name"]`,
             `.${RV}__author-name`,
