@@ -168,10 +168,11 @@ class OrganizationService
      */
     private function extractYandexId($url): ?string
     {
-        if (preg_match('/\/org\/(?:[^\/]+\/)?(\d+)/', $url, $matches)) {
+        $decodedUrl = urldecode($url);
+        if (preg_match('/\/org\/(?:[^\/]+\/)?(\d+)/', $decodedUrl, $matches)) {
             return $matches[1];
         }
-        if (preg_match('/oid=(\d+)/', $url, $matches)) {
+        if (preg_match('/oid=(\d+)/', $decodedUrl, $matches)) {
             return $matches[1];
         }
         return null;
