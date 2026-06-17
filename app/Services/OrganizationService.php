@@ -24,7 +24,11 @@ class OrganizationService
      */
     public function saveSettings(string $url): Organization
     {
-        if (!$yandexId = $this->extractYandexId($url)) {
+        $yandexId = $this->extractYandexId($url);
+        if ($yandexId) {
+            // Normalize URL to direct organization card for faster and more reliable parsing
+            $url = "https://yandex.ru/maps/org/{$yandexId}/";
+        } else {
             $yandexId = 'pending_' . bin2hex(random_bytes(8));
         }
 
@@ -56,12 +60,17 @@ class OrganizationService
             ->paginate($perPage);
     }
 
-    /**
-     * Manually trigger reparsing of the current organization reviews.
-     */
     public function refreshReviews(): ?Organization
     {
         $organization = Organization::firstOrFail();
+
+        $yandexId = $this->extractYandexId($organization->url);
+        if ($yandexId) {
+            $normalizedUrl = "https://yandex.ru/maps/org/{$yandexId}/";
+            if ($organization->url !== $normalizedUrl) {
+                $organization->update(['url' => $normalizedUrl]);
+            }
+        }
 
         $organization->update([
             'status' => 'pending',
@@ -160,6 +169,9 @@ class OrganizationService
     private function extractYandexId($url): ?string
     {
         if (preg_match('/\/org\/(?:[^\/]+\/)?(\d+)/', $url, $matches)) {
+            return $matches[1];
+        }
+        if (preg_match('/oid=(\d+)/', $url, $matches)) {
             return $matches[1];
         }
         return null;
