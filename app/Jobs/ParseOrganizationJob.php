@@ -20,10 +20,7 @@ class ParseOrganizationJob implements ShouldQueue
      */
     public int $timeout = 180;
 
-    /**
-     * The number of times the job may be attempted.
-     */
-    public int $tries = 10;
+    public int $tries = 1;
 
     protected Organization $organization;
 
