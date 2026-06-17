@@ -126,12 +126,12 @@ class OrganizationService
             'rating'       => (float)($orgInfo['rating'] ?? $organization->rating),
             'rating_count' => (int)($orgInfo['ratingCount'] ?? $organization->rating_count),
             'review_count' => (int)($orgInfo['reviewCount'] ?? $organization->review_count),
-            'status'       => 'completed',
             'error_message'=> null,
         ]);
 
         if ($organization->isDirty()) {
             $organization->last_parsed_at = now();
+            $organization->status = 'completed';
         }
 
         $reviewsList = $result['reviews'] ?? [];
