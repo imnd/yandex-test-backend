@@ -17,16 +17,12 @@ class YandexPlaywrightClient
     {
         $scriptPath = base_path('parser/parse.js');
 
-        $env = [];
+        $args = ['node', $scriptPath, $url];
         if ($proxy) {
-            $env['SCRAPER_PROXY'] = $proxy->server;
+            $args[] = $proxy->server;
         }
 
-        $process = new Process([
-            'node',
-            $scriptPath,
-            $url
-        ], null, $env);
+        $process = new Process($args);
 
         // Set working directory to the parser folder to ensure Node resolves modules
         $process->setWorkingDirectory(base_path('parser'));

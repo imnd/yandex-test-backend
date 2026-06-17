@@ -107,14 +107,11 @@ async function main() {
             timezoneId: 'Europe/Moscow'
         };
 
-        if (process.env.SCRAPER_PROXY) {
-            const proxies = process.env.SCRAPER_PROXY.split(',').map(p => p.trim()).filter(Boolean);
-            if (proxies.length > 0) {
-                const randomProxy = proxies[Math.floor(Math.random() * proxies.length)];
-                contextOptions.proxy = {
-                    server: randomProxy
-                };
-            }
+        const proxyServer = process.argv[3];
+        if (proxyServer) {
+            contextOptions.proxy = {
+                server: proxyServer
+            };
         }
 
         const context = await browser.newContext(contextOptions);
