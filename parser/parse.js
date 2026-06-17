@@ -124,7 +124,26 @@ async function main() {
 
         const page = await context.newPage();
 
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        page.on('console', msg => {
+            if (msg.type() === 'error') {
+                console.error('CONSOLE_ERROR:', msg.text());
+            }
+        });
+
+        page.on('pageerror', err => {
+            console.error('PAGE_ERROR:', err.message);
+        });
+
+        await context.addCookies([
+            { name: 'yandex_gid', value: '213', domain: '.yandex.ru', path: '/' },
+            { name: 'gdpr', value: '0', domain: '.yandex.ru', path: '/' },
+        ]);
+
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'ru-RU,ru;q=0.9',
+        });
+
+        await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
         const checkCaptchaOrBlock = async () => {
             return await page.evaluate(() => {
@@ -178,11 +197,12 @@ async function main() {
             if (await checkCaptchaOrBlock()) {
                 throw new Error('YANDEX_CAPTCHA_REQUIRED');
             }
-            const html = await page.content();
-            const snippet = html.substring(0, 3000);
+            const bodyText = await page.evaluate(() => document.body ? document.body.innerText.substring(0, 2000) : 'NO BODY');
+            const bodyHtml = await page.evaluate(() => document.body ? document.body.innerHTML.substring(0, 3000) : 'NO BODY');
             console.error('PAGE_DEBUG_URL:', page.url());
             console.error('PAGE_DEBUG_TITLE:', await page.title());
-            console.error('PAGE_DEBUG_HTML:', snippet);
+            console.error('PAGE_DEBUG_TEXT:', bodyText);
+            console.error('PAGE_DEBUG_BODYHTML:', bodyHtml);
             throw err;
         }
 
