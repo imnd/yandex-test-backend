@@ -3,6 +3,7 @@ set -e
 
 # Cache configuration and routes for production performance
 echo "Caching Laravel config, routes, and views..."
+php artisan config:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
