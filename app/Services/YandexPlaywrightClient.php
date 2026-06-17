@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ParseException;
+use App\Models\Proxy;
 use Symfony\Component\Process\Process;
 
 class YandexPlaywrightClient
@@ -12,15 +13,20 @@ class YandexPlaywrightClient
      *
      * @throws ParseException
      */
-    public function scrape(string $url): array
+    public function scrape(string $url, ?Proxy $proxy = null): array
     {
         $scriptPath = base_path('parser/parse.js');
+
+        $env = [];
+        if ($proxy) {
+            $env['SCRAPER_PROXY'] = $proxy->server;
+        }
 
         $process = new Process([
             'node',
             $scriptPath,
             $url
-        ]);
+        ], null, $env);
 
         // Set working directory to the parser folder to ensure Node resolves modules
         $process->setWorkingDirectory(base_path('parser'));
