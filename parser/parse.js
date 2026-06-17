@@ -124,9 +124,53 @@ async function main() {
 
         const page = await context.newPage();
 
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
-        await page.waitForSelector(S.org.cardView, { timeout: 15000 });
+        const checkCaptchaOrBlock = async () => {
+            return await page.evaluate(() => {
+                const href = window.location.href;
+                if (href.includes('showcaptcha') || href.includes('captcha')) {
+                    return true;
+                }
+                const title = document.title || '';
+                if (title.includes('Ой') || title.includes('Oops') || title.includes('Captcha')) {
+                    return true;
+                }
+                if (
+                    document.querySelector('.smart-captcha') ||
+                    document.querySelector('#captcha-container') ||
+                    document.querySelector('.CheckboxCaptcha') ||
+                    document.querySelector('form[action*="showcaptcha"]') ||
+                    document.querySelector('input[name="retpath"]')
+                ) {
+                    return true;
+                }
+                const text = document.body ? document.body.innerText : '';
+                if (
+                    text.includes('Подтвердите, что вы не робот') ||
+                    text.includes('автоматический запрос') ||
+                    text.includes('автоматические запросы') ||
+                    text.includes('Доступ временно ограничен') ||
+                    text.includes('Доступ ограничен')
+                ) {
+                    return true;
+                }
+                return false;
+            });
+        };
+
+        if (await checkCaptchaOrBlock()) {
+            throw new Error('YANDEX_CAPTCHA_REQUIRED');
+        }
+
+        try {
+            await page.waitForSelector(S.org.cardView, { timeout: 10000 });
+        } catch (err) {
+            if (await checkCaptchaOrBlock()) {
+                throw new Error('YANDEX_CAPTCHA_REQUIRED');
+            }
+            throw err;
+        }
 
         const orgInfo = await page.evaluate((s) => {
             let name = null;

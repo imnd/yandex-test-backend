@@ -31,7 +31,7 @@ class YandexParsingOrchestrator
     {
         $this->organizationService->setProcessingStatus($organization);
 
-        $maxAttempts = 5;
+        $maxAttempts = 20;
         $attempt = 0;
         $scrapedData = null;
         $lastException = null;
