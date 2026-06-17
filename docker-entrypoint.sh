@@ -1,9 +1,13 @@
 #!/bin/sh
 set -e
 
+# Clear any cached config first to ensure env vars from platform are used
+echo "Clearing cached config..."
+php artisan config:clear
+php artisan cache:clear
+
 # Cache configuration and routes for production performance
 echo "Caching Laravel config, routes, and views..."
-php artisan config:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
