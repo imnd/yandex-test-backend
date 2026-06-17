@@ -101,7 +101,7 @@ async function main() {
         });
 
         const contextOptions = {
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             viewport: { width: 1280, height: 800 },
             locale: 'ru-RU',
             timezoneId: 'Europe/Moscow'
@@ -133,7 +133,7 @@ async function main() {
                     return true;
                 }
                 const title = document.title || '';
-                if (title.includes('Ой') || title.includes('Oops') || title.includes('Captcha')) {
+                if (title.includes('Ой') || title.includes('Oops') || title.includes('Captcha') || title.includes('403') || title.includes('429')) {
                     return true;
                 }
                 if (
@@ -141,7 +141,9 @@ async function main() {
                     document.querySelector('#captcha-container') ||
                     document.querySelector('.CheckboxCaptcha') ||
                     document.querySelector('form[action*="showcaptcha"]') ||
-                    document.querySelector('input[name="retpath"]')
+                    document.querySelector('input[name="retpath"]') ||
+                    document.querySelector('[class*="error-page"]') ||
+                    document.querySelector('[class*="block-page"]')
                 ) {
                     return true;
                 }
@@ -151,8 +153,15 @@ async function main() {
                     text.includes('автоматический запрос') ||
                     text.includes('автоматические запросы') ||
                     text.includes('Доступ временно ограничен') ||
-                    text.includes('Доступ ограничен')
+                    text.includes('Доступ ограничен') ||
+                    text.includes('Something went wrong') ||
+                    text.includes('Слишком много запросов') ||
+                    text.includes('Too many requests')
                 ) {
+                    return true;
+                }
+                const body = document.body;
+                if (body && body.children.length <= 2 && text.trim().length < 50) {
                     return true;
                 }
                 return false;
@@ -164,11 +173,16 @@ async function main() {
         }
 
         try {
-            await page.waitForSelector(S.org.cardView, { timeout: 10000 });
+            await page.waitForSelector(S.org.cardView, { timeout: 15000 });
         } catch (err) {
             if (await checkCaptchaOrBlock()) {
                 throw new Error('YANDEX_CAPTCHA_REQUIRED');
             }
+            const html = await page.content();
+            const snippet = html.substring(0, 3000);
+            console.error('PAGE_DEBUG_URL:', page.url());
+            console.error('PAGE_DEBUG_TITLE:', await page.title());
+            console.error('PAGE_DEBUG_HTML:', snippet);
             throw err;
         }
 
