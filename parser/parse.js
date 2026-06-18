@@ -324,6 +324,8 @@ async function main() {
         let noChangeCount = 0;
         const targetCount = 600;
         const maxScrolls = 300;
+        const startTime = Date.now();
+        const maxTimeMs = 700 * 1000; // 700s hard limit — must exit before PHP/job timeout
 
         // Find the center of the reviews area to scroll via mouse wheel
         const getScrollPoint = async () => {
@@ -361,6 +363,7 @@ async function main() {
             const currentCount = await page.locator(S.reviews.card).count();
 
             if (currentCount >= targetCount) break;
+            if (Date.now() - startTime > maxTimeMs) break;
 
             if (currentCount === lastCount) {
                 noChangeCount++;

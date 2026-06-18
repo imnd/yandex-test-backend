@@ -26,7 +26,7 @@ class YandexPlaywrightClient
 
         // Set working directory to the parser folder to ensure Node resolves modules
         $process->setWorkingDirectory(base_path('parser'));
-        $process->setTimeout(600000); // 600 seconds timeout for loading 600 reviews
+        $process->setTimeout(780); // 780s — must be less than job $timeout (900s)
 
         $process->run();
 
