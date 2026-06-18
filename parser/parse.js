@@ -319,10 +319,43 @@ async function main() {
             // Reviews might not have loaded; continue anyway
         }
 
+
         let lastCount = 0;
         let noChangeCount = 0;
         const targetCount = 600;
-        const maxScrolls = 200;
+        const maxScrolls = 300;
+
+        // Find the center of the reviews area to scroll via mouse wheel
+        const getScrollPoint = async () => {
+            return await page.evaluate(() => {
+                // Try to get bounding rect of the scrollable panel
+                const selectors = [
+                    '[class*="panel"]',
+                    '[class*="sidebar"]',
+                    '.scroll__content',
+                    '[class*="scroll__content"]',
+                ];
+                for (const sel of selectors) {
+                    const el = document.querySelector(sel);
+                    if (el && el.scrollHeight > el.clientHeight) {
+                        const rect = el.getBoundingClientRect();
+                        if (rect.width > 0 && rect.height > 0) {
+                            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                        }
+                    }
+                }
+                // Fallback to last review card
+                const cards = document.querySelectorAll('.business-review-view, .business-reviews-card-view');
+                if (cards.length > 0) {
+                    const last = cards[cards.length - 1];
+                    const rect = last.getBoundingClientRect();
+                    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                }
+                return { x: 640, y: 400 };
+            });
+        };
+
+        const scrollPt = await getScrollPoint();
 
         for (let i = 0; i < maxScrolls; i++) {
             const currentCount = await page.locator(S.reviews.card).count();
@@ -331,22 +364,21 @@ async function main() {
 
             if (currentCount === lastCount) {
                 noChangeCount++;
-                if (noChangeCount >= 15) break;
+                if (noChangeCount >= 20) break;
             } else {
                 noChangeCount = 0;
                 lastCount = currentCount;
             }
 
-            await page.evaluate((scrollSel) => {
-                const container = document.querySelector(scrollSel);
-                if (container) {
-                    container.scrollTo(0, container.scrollHeight);
-                } else {
-                    window.scrollTo(0, document.body.scrollHeight);
-                }
-            }, S.reviews.scrollContainer);
+            // Use real mouse wheel events — the only reliable way to trigger
+            // Yandex Maps IntersectionObserver-based lazy loading
+            await page.mouse.move(scrollPt.x, scrollPt.y);
+            await page.mouse.wheel(0, 600);
+            await page.waitForTimeout(300);
+            await page.mouse.wheel(0, 600);
 
-            await page.waitForTimeout(1200 + Math.random() * 800);
+
+            await page.waitForTimeout(1000 + Math.random() * 600);
         }
 
         const reviews = await page.evaluate((s) => {
