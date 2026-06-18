@@ -322,7 +322,7 @@ async function main() {
         let lastCount = 0;
         let noChangeCount = 0;
         const targetCount = 600;
-        const maxScrolls = 60;
+        const maxScrolls = 200;
 
         for (let i = 0; i < maxScrolls; i++) {
             const currentCount = await page.locator(S.reviews.card).count();
@@ -331,7 +331,7 @@ async function main() {
 
             if (currentCount === lastCount) {
                 noChangeCount++;
-                if (noChangeCount >= 6) break;
+                if (noChangeCount >= 15) break;
             } else {
                 noChangeCount = 0;
                 lastCount = currentCount;
@@ -346,7 +346,7 @@ async function main() {
                 }
             }, S.reviews.scrollContainer);
 
-            await page.waitForTimeout(800 + Math.random() * 700);
+            await page.waitForTimeout(1200 + Math.random() * 800);
         }
 
         const reviews = await page.evaluate((s) => {
